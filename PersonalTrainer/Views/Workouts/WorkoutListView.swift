@@ -4,7 +4,7 @@ import SwiftData
 struct WorkoutListView: View {
     @Bindable var workoutViewModel: WorkoutViewModel
     @Bindable var timerViewModel: TimerViewModel
-    @Query(sort: \CustomWorkoutPlan.createdDate, order: .reverse) private var customPlans: [CustomWorkoutPlan]
+    @Query(sort: \CustomWorkoutPlan.createdDate, order: .forward) private var customPlans: [CustomWorkoutPlan]
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(\.modelContext) private var modelContext
 

@@ -5,7 +5,26 @@ struct HomeView: View {
     @Bindable var workoutViewModel: WorkoutViewModel
     @Bindable var timerViewModel: TimerViewModel
     @Query(sort: \WorkoutSession.date, order: .reverse) private var recentSessions: [WorkoutSession]
+    @Query(sort: \CustomWorkoutPlan.createdDate, order: .forward) private var customPlans: [CustomWorkoutPlan]
     @Environment(\.modelContext) private var modelContext
+
+    // Get the next suggested workout based on the last completed custom plan day
+    private var nextSuggestedWorkout: CustomWorkoutPlan? {
+        guard !customPlans.isEmpty else { return nil }
+
+        // Find the last completed workout that matches a custom plan
+        if let lastSession = recentSessions.first {
+            // Find which custom plan was completed
+            if let lastCompletedIndex = customPlans.firstIndex(where: { $0.name == lastSession.workoutPlanName }) {
+                // Get the next day in sequence
+                let nextIndex = (lastCompletedIndex + 1) % customPlans.count
+                return customPlans[nextIndex]
+            }
+        }
+
+        // If no matching session found, suggest the first plan
+        return customPlans.first
+    }
 
     private var thisWeekSessions: [WorkoutSession] {
         let calendar = Calendar.current
@@ -23,6 +42,11 @@ struct HomeView: View {
                 VStack(spacing: 20) {
                     // Welcome Section
                     welcomeSection
+
+                    // Next Suggested Workout (if custom plans exist)
+                    if let nextWorkout = nextSuggestedWorkout {
+                        nextWorkoutSection(plan: nextWorkout)
+                    }
 
                     // Weekly Stats
                     weeklyStatsSection
@@ -113,6 +137,57 @@ struct HomeView: View {
                     color: .green
                 )
             }
+        }
+    }
+
+    private func nextWorkoutSection(plan: CustomWorkoutPlan) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Up Next")
+                .font(.headline)
+
+            Button(action: {
+                workoutViewModel.startWorkout(plan: plan.toWorkoutPlan(), pastSessions: recentSessions)
+            }) {
+                HStack(spacing: 16) {
+                    Image(systemName: plan.iconName)
+                        .font(.title)
+                        .foregroundStyle(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Color.blue)
+                        .cornerRadius(12)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(plan.name)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+
+                        Text(plan.planDescription)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+
+                        HStack(spacing: 12) {
+                            Label("\(plan.exerciseNames.count) exercises", systemImage: "list.bullet")
+                            Label("\(plan.estimatedDuration) min", systemImage: "clock")
+                        }
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "play.fill")
+                        .font(.title2)
+                        .foregroundStyle(.blue)
+                }
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(16)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.blue.opacity(0.3), lineWidth: 1)
+                )
+            }
+            .buttonStyle(.plain)
         }
     }
 

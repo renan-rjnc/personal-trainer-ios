@@ -1,5 +1,11 @@
 import SwiftUI
 
+enum ExerciseStatus {
+    case pending
+    case done
+    case skipped
+}
+
 struct ActiveWorkoutView: View {
     @Bindable var workoutViewModel: WorkoutViewModel
     @Bindable var timerViewModel: TimerViewModel
@@ -8,33 +14,46 @@ struct ActiveWorkoutView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showingExitAlert = false
     @State private var showingFinishAlert = false
+    @State private var exerciseStatuses: [UUID: ExerciseStatus] = [:]
+    @State private var selectedExerciseIndex: Int = 0
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Timer Section
-                timerSection
-                    .padding()
+                // Progress indicators
+                exerciseProgressIndicator
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+
+                // Timer Section (compact)
+                compactTimerSection
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
                     .background(Color(.systemGray6))
 
-                // Exercise Content
-                ScrollView {
-                    VStack(spacing: 20) {
-                        // Current Exercise
-                        if let exercise = workoutViewModel.currentExercise {
-                            currentExerciseSection(exercise: exercise)
-                        }
-
-                        // Set Input
-                        setInputSection
-
-                        // Completed Sets
-                        completedSetsSection
-
-                        // Navigation Buttons
-                        exerciseNavigationSection
+                // Swipeable Exercise Pages
+                TabView(selection: $selectedExerciseIndex) {
+                    ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
+                        ExercisePageView(
+                            exercise: exercise,
+                            exerciseNumber: index + 1,
+                            totalExercises: workout.exercises.count,
+                            status: exerciseStatuses[exercise.id] ?? .pending,
+                            workoutViewModel: workoutViewModel,
+                            timerViewModel: timerViewModel,
+                            onMarkDone: {
+                                markExerciseDone(exercise)
+                            },
+                            onSkip: {
+                                skipExercise(exercise)
+                            }
+                        )
+                        .tag(index)
                     }
-                    .padding()
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .onChange(of: selectedExerciseIndex) { _, newIndex in
+                    workoutViewModel.currentExerciseIndex = newIndex
                 }
             }
             .navigationTitle(workout.name)
@@ -73,18 +92,61 @@ struct ActiveWorkoutView: View {
             } message: {
                 Text("This will save your workout to history.")
             }
+            .onAppear {
+                // Initialize all exercises as pending
+                for exercise in workout.exercises {
+                    if exerciseStatuses[exercise.id] == nil {
+                        exerciseStatuses[exercise.id] = .pending
+                    }
+                }
+            }
         }
     }
 
-    private var timerSection: some View {
-        VStack(spacing: 12) {
+    // MARK: - Progress Indicator
+    private var exerciseProgressIndicator: some View {
+        HStack(spacing: 4) {
+            ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
+                Button(action: {
+                    withAnimation {
+                        selectedExerciseIndex = index
+                    }
+                }) {
+                    Circle()
+                        .fill(statusColor(for: exercise))
+                        .frame(width: index == selectedExerciseIndex ? 12 : 8,
+                               height: index == selectedExerciseIndex ? 12 : 8)
+                        .overlay(
+                            Circle()
+                                .stroke(index == selectedExerciseIndex ? Color.blue : Color.clear, lineWidth: 2)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+
+    private func statusColor(for exercise: Exercise) -> Color {
+        switch exerciseStatuses[exercise.id] ?? .pending {
+        case .done: return .green
+        case .skipped: return .orange
+        case .pending: return Color(.systemGray4)
+        }
+    }
+
+    // MARK: - Compact Timer
+    private var compactTimerSection: some View {
+        HStack(spacing: 16) {
             // Timer Display
             Text(timerViewModel.formattedTime)
-                .font(.system(size: 48, weight: .medium, design: .monospaced))
+                .font(.system(size: 24, weight: .medium, design: .monospaced))
                 .foregroundStyle(timerViewModel.isCountdownComplete ? .red : .primary)
 
-            // Timer Mode Toggle
-            Picker("Timer Mode", selection: Binding(
+            Spacer()
+
+            // Mode Toggle
+            Picker("", selection: Binding(
                 get: { timerViewModel.mode },
                 set: { newMode in
                     if newMode == .stopwatch {
@@ -94,35 +156,22 @@ struct ActiveWorkoutView: View {
                     }
                 }
             )) {
-                Text("Stopwatch").tag(TimerViewModel.TimerMode.stopwatch)
-                Text("Countdown").tag(TimerViewModel.TimerMode.countdown)
+                Image(systemName: "stopwatch").tag(TimerViewModel.TimerMode.stopwatch)
+                Image(systemName: "timer").tag(TimerViewModel.TimerMode.countdown)
             }
             .pickerStyle(.segmented)
-            .frame(width: 200)
-
-            // Countdown Presets
-            if timerViewModel.mode == .countdown {
-                HStack(spacing: 8) {
-                    ForEach(timerViewModel.countdownPresets, id: \.self) { seconds in
-                        Button(formatSeconds(seconds)) {
-                            timerViewModel.setCountdown(seconds: seconds)
-                        }
-                        .buttonStyle(.bordered)
-                        .tint(timerViewModel.countdownDuration == seconds ? .blue : .gray)
-                    }
-                }
-            }
+            .frame(width: 100)
 
             // Timer Controls
-            HStack(spacing: 20) {
+            HStack(spacing: 8) {
                 Button(action: {
                     timerViewModel.reset()
                 }) {
                     Image(systemName: "arrow.counterclockwise")
-                        .font(.title2)
-                        .frame(width: 44, height: 44)
+                        .font(.body)
                 }
                 .buttonStyle(.bordered)
+                .controlSize(.small)
 
                 Button(action: {
                     if timerViewModel.isRunning {
@@ -132,21 +181,88 @@ struct ActiveWorkoutView: View {
                     }
                 }) {
                     Image(systemName: timerViewModel.isRunning ? "pause.fill" : "play.fill")
-                        .font(.title2)
-                        .frame(width: 60, height: 44)
+                        .font(.body)
                 }
                 .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             }
         }
     }
 
-    private func currentExerciseSection(exercise: Exercise) -> some View {
+    // MARK: - Actions
+    private func markExerciseDone(_ exercise: Exercise) {
+        exerciseStatuses[exercise.id] = .done
+        moveToNextExercise()
+    }
+
+    private func skipExercise(_ exercise: Exercise) {
+        exerciseStatuses[exercise.id] = .skipped
+        moveToNextExercise()
+    }
+
+    private func moveToNextExercise() {
+        if selectedExerciseIndex < workout.exercises.count - 1 {
+            withAnimation {
+                selectedExerciseIndex += 1
+            }
+        }
+    }
+}
+
+// MARK: - Exercise Page View
+struct ExercisePageView: View {
+    let exercise: Exercise
+    let exerciseNumber: Int
+    let totalExercises: Int
+    let status: ExerciseStatus
+    @Bindable var workoutViewModel: WorkoutViewModel
+    @Bindable var timerViewModel: TimerViewModel
+    let onMarkDone: () -> Void
+    let onSkip: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                // Exercise Header with Status
+                exerciseHeader
+
+                // Set Input Section
+                setInputSection
+
+                // Completed Sets
+                completedSetsSection
+
+                // Done/Skip Buttons
+                actionButtons
+
+                // Swipe hint
+                swipeHint
+            }
+            .padding()
+        }
+    }
+
+    private var exerciseHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("Exercise \(workoutViewModel.exerciseProgress)")
+                Text("Exercise \(exerciseNumber) of \(totalExercises)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+
                 Spacer()
+
+                if status != .pending {
+                    Label(
+                        status == .done ? "Done" : "Skipped",
+                        systemImage: status == .done ? "checkmark.circle.fill" : "forward.fill"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(status == .done ? .green : .orange)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(status == .done ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
+                    .cornerRadius(8)
+                }
             }
 
             HStack {
@@ -224,8 +340,7 @@ struct ActiveWorkoutView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
 
-                        if let exercise = workoutViewModel.currentExercise,
-                           let lastWeight = workoutViewModel.getLastWeight(for: exercise.name) {
+                        if let lastWeight = workoutViewModel.getLastWeight(for: exercise.name) {
                             Text("• Last: \(Int(lastWeight))")
                                 .font(.caption)
                                 .foregroundStyle(.blue)
@@ -279,11 +394,13 @@ struct ActiveWorkoutView: View {
 
     private var completedSetsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            if !workoutViewModel.setsForCurrentExercise.isEmpty {
+            let setsForExercise = workoutViewModel.completedSets.filter { $0.exerciseName == exercise.name }
+
+            if !setsForExercise.isEmpty {
                 Text("Completed Sets")
                     .font(.headline)
 
-                ForEach(workoutViewModel.setsForCurrentExercise) { set in
+                ForEach(setsForExercise) { set in
                     HStack {
                         Text("Set \(set.setNumber)")
                             .fontWeight(.medium)
@@ -311,36 +428,37 @@ struct ActiveWorkoutView: View {
         }
     }
 
-    private var exerciseNavigationSection: some View {
-        HStack {
-            Button(action: {
-                workoutViewModel.previousExercise()
-            }) {
-                Label("Previous", systemImage: "chevron.left")
+    private var actionButtons: some View {
+        HStack(spacing: 16) {
+            Button(action: onSkip) {
+                Label("Skip", systemImage: "forward.fill")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
             }
-            .disabled(workoutViewModel.currentExerciseIndex == 0)
+            .buttonStyle(.bordered)
+            .tint(.orange)
+            .controlSize(.large)
 
-            Spacer()
-
-            Button(action: {
-                workoutViewModel.nextExercise()
-            }) {
-                Label("Next", systemImage: "chevron.right")
+            Button(action: onMarkDone) {
+                Label("Done", systemImage: "checkmark")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
             }
-            .disabled(workoutViewModel.currentExerciseIndex >= workout.exercises.count - 1)
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+            .controlSize(.large)
         }
-        .buttonStyle(.bordered)
     }
 
-    private func formatSeconds(_ seconds: TimeInterval) -> String {
-        let mins = Int(seconds) / 60
-        let secs = Int(seconds) % 60
-        if mins > 0 && secs == 0 {
-            return "\(mins)m"
-        } else if mins > 0 {
-            return "\(mins):\(String(format: "%02d", secs))"
+    private var swipeHint: some View {
+        HStack {
+            Image(systemName: "hand.draw")
+                .foregroundStyle(.secondary)
+            Text("Swipe left or right to navigate exercises")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        return "\(secs)s"
+        .padding(.top, 8)
     }
 }
 
