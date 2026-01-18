@@ -270,14 +270,14 @@ struct ExerciseSelectionView: View {
     private var exercisesList: some View {
         ForEach(filteredExercises, id: \.self) { exerciseName in
             NavigationLink(destination: ExerciseProgressView(exerciseName: exerciseName)) {
-                ExerciseRowView(exerciseName: exerciseName)
+                ProgressExerciseRowView(exerciseName: exerciseName)
             }
         }
     }
 }
 
-// MARK: - Exercise Row View
-struct ExerciseRowView: View {
+// MARK: - Progress Exercise Row View
+struct ProgressExerciseRowView: View {
     let exerciseName: String
 
     var body: some View {
