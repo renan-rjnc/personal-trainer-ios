@@ -24,6 +24,10 @@
 		015 /* TimerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 115 /* TimerViewModel.swift */; };
 		016 /* SampleWorkouts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 116 /* SampleWorkouts.swift */; };
 		017 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 117 /* Assets.xcassets */; };
+		018 /* CustomWorkoutPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 118 /* CustomWorkoutPlan.swift */; };
+		019 /* WorkoutPlanGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 119 /* WorkoutPlanGenerator.swift */; };
+		020 /* CreatePlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 120 /* CreatePlanView.swift */; };
+		021 /* WorkoutFeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121 /* WorkoutFeedbackView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,6 +49,10 @@
 		115 /* TimerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerViewModel.swift; sourceTree = "<group>"; };
 		116 /* SampleWorkouts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SampleWorkouts.swift; sourceTree = "<group>"; };
 		117 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		118 /* CustomWorkoutPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomWorkoutPlan.swift; sourceTree = "<group>"; };
+		119 /* WorkoutPlanGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanGenerator.swift; sourceTree = "<group>"; };
+		120 /* CreatePlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePlanView.swift; sourceTree = "<group>"; };
+		121 /* WorkoutFeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFeedbackView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -94,6 +102,7 @@
 				111 /* WorkoutPlan.swift */,
 				112 /* ExerciseSet.swift */,
 				113 /* WorkoutSession.swift */,
+				118 /* CustomWorkoutPlan.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -123,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				116 /* SampleWorkouts.swift */,
+				119 /* WorkoutPlanGenerator.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -141,6 +151,8 @@
 				104 /* WorkoutListView.swift */,
 				105 /* WorkoutDetailView.swift */,
 				106 /* ActiveWorkoutView.swift */,
+				120 /* CreatePlanView.swift */,
+				121 /* WorkoutFeedbackView.swift */,
 			);
 			path = Workouts;
 			sourceTree = "<group>";
@@ -247,6 +259,10 @@
 				014 /* WorkoutViewModel.swift in Sources */,
 				015 /* TimerViewModel.swift in Sources */,
 				016 /* SampleWorkouts.swift in Sources */,
+				018 /* CustomWorkoutPlan.swift in Sources */,
+				019 /* WorkoutPlanGenerator.swift in Sources */,
+				020 /* CreatePlanView.swift in Sources */,
+				021 /* WorkoutFeedbackView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

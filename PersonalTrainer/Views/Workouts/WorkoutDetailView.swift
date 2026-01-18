@@ -1,9 +1,11 @@
 import SwiftUI
+import SwiftData
 
 struct WorkoutDetailView: View {
     let workout: WorkoutPlan
     @Bindable var workoutViewModel: WorkoutViewModel
     @Bindable var timerViewModel: TimerViewModel
+    @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
 
     var body: some View {
         List {
@@ -45,7 +47,7 @@ struct WorkoutDetailView: View {
 
             Section {
                 Button(action: {
-                    workoutViewModel.startWorkout(plan: workout)
+                    workoutViewModel.startWorkout(plan: workout, pastSessions: sessions)
                 }) {
                     HStack {
                         Spacer()

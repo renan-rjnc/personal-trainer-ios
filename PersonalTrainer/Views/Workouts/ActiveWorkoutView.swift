@@ -219,9 +219,18 @@ struct ActiveWorkoutView: View {
                 }
 
                 VStack {
-                    Text("Weight (lbs)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    HStack(spacing: 4) {
+                        Text("Weight (lbs)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+
+                        if let exercise = workoutViewModel.currentExercise,
+                           let lastWeight = workoutViewModel.getLastWeight(for: exercise.name) {
+                            Text("• Last: \(Int(lastWeight))")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        }
+                    }
 
                     HStack {
                         Button(action: {

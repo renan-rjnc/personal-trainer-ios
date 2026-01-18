@@ -15,6 +15,13 @@ final class WorkoutViewModel {
     var currentReps: Int = 10
     var currentWeight: Double = 0
 
+    // Weight memory - stores last used weights per exercise
+    var exerciseWeightHistory: [String: Double] = [:]
+
+    // Completed session for feedback
+    var completedSession: WorkoutSession?
+    var showFeedbackSheet: Bool = false
+
     var currentExercise: Exercise? {
         guard let workout = currentWorkout,
               currentExerciseIndex < workout.exercises.count else {
@@ -38,13 +45,37 @@ final class WorkoutViewModel {
         return completedSets.filter { $0.exerciseName == exercise.name }
     }
 
-    func startWorkout(plan: WorkoutPlan) {
+    func startWorkout(plan: WorkoutPlan, pastSessions: [WorkoutSession] = []) {
         currentWorkout = plan
         currentExerciseIndex = 0
         isWorkoutActive = true
         workoutStartTime = Date()
         completedSets = []
+
+        // Load weight history from past sessions
+        loadWeightHistory(from: pastSessions)
+
         resetCurrentSet()
+    }
+
+    func loadWeightHistory(from sessions: [WorkoutSession]) {
+        exerciseWeightHistory = [:]
+
+        // Sort sessions by date, most recent first
+        let sortedSessions = sessions.sorted { $0.date > $1.date }
+
+        // Get the most recent weight for each exercise
+        for session in sortedSessions {
+            for set in session.exerciseSets {
+                if exerciseWeightHistory[set.exerciseName] == nil && set.weight > 0 {
+                    exerciseWeightHistory[set.exerciseName] = set.weight
+                }
+            }
+        }
+    }
+
+    func getLastWeight(for exerciseName: String) -> Double? {
+        return exerciseWeightHistory[exerciseName]
     }
 
     func nextExercise() {
@@ -80,7 +111,7 @@ final class WorkoutViewModel {
         completedSets.removeAll { $0.id == set.id }
     }
 
-    func finishWorkout(modelContext: ModelContext) -> WorkoutSession? {
+    func finishWorkout(modelContext: ModelContext, showFeedback: Bool = true) -> WorkoutSession? {
         guard let workout = currentWorkout, let startTime = workoutStartTime else {
             return nil
         }
@@ -96,10 +127,29 @@ final class WorkoutViewModel {
 
         modelContext.insert(session)
 
-        // Reset state
-        endWorkout()
+        // Store for feedback
+        if showFeedback {
+            completedSession = session
+            showFeedbackSheet = true
+        }
+
+        // Reset workout state but keep session for feedback
+        currentWorkout = nil
+        currentExerciseIndex = 0
+        isWorkoutActive = false
+        workoutStartTime = nil
+        completedSets = []
 
         return session
+    }
+
+    func submitFeedback(_ feedback: DifficultyFeedback, modelContext: ModelContext) {
+        if let session = completedSession {
+            session.feedback = feedback
+            try? modelContext.save()
+        }
+        completedSession = nil
+        showFeedbackSheet = false
     }
 
     func endWorkout() {
@@ -115,6 +165,8 @@ final class WorkoutViewModel {
         currentSetNumber = setsForCurrentExercise.count + 1
         if let exercise = currentExercise {
             currentReps = exercise.defaultReps
+            // Use last recorded weight for this exercise, or 0 if none
+            currentWeight = exerciseWeightHistory[exercise.name] ?? 0
         }
     }
 }

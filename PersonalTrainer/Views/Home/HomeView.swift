@@ -47,6 +47,21 @@ struct HomeView: View {
                     )
                 }
             }
+            .sheet(isPresented: $workoutViewModel.showFeedbackSheet) {
+                if let session = workoutViewModel.completedSession {
+                    WorkoutFeedbackView(
+                        session: session,
+                        onSubmit: { feedback in
+                            workoutViewModel.submitFeedback(feedback, modelContext: modelContext)
+                        },
+                        onSkip: {
+                            workoutViewModel.completedSession = nil
+                            workoutViewModel.showFeedbackSheet = false
+                        }
+                    )
+                    .presentationDetents([.medium, .large])
+                }
+            }
         }
     }
 
@@ -109,7 +124,7 @@ struct HomeView: View {
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(SampleWorkouts.allWorkouts.prefix(4)) { workout in
                     QuickStartCard(workout: workout) {
-                        workoutViewModel.startWorkout(plan: workout)
+                        workoutViewModel.startWorkout(plan: workout, pastSessions: recentSessions)
                     }
                 }
             }

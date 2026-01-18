@@ -8,19 +8,35 @@ final class WorkoutSession {
     var workoutPlanName: String
     var duration: TimeInterval
     @Relationship(deleteRule: .cascade) var exerciseSets: [ExerciseSet]
+    var difficultyFeedback: String?  // "tooEasy", "justRight", "tooHard"
+    var notes: String?
 
     init(
         id: UUID = UUID(),
         date: Date = Date(),
         workoutPlanName: String,
         duration: TimeInterval,
-        exerciseSets: [ExerciseSet] = []
+        exerciseSets: [ExerciseSet] = [],
+        difficultyFeedback: String? = nil,
+        notes: String? = nil
     ) {
         self.id = id
         self.date = date
         self.workoutPlanName = workoutPlanName
         self.duration = duration
         self.exerciseSets = exerciseSets
+        self.difficultyFeedback = difficultyFeedback
+        self.notes = notes
+    }
+
+    var feedback: DifficultyFeedback? {
+        get {
+            guard let feedbackString = difficultyFeedback else { return nil }
+            return DifficultyFeedback(rawValue: feedbackString)
+        }
+        set {
+            difficultyFeedback = newValue?.rawValue
+        }
     }
 
     var formattedDuration: String {
