@@ -1,10 +1,10 @@
 import SwiftUI
 import SwiftData
+import Charts
 
 struct HistoryListView: View {
     @Query(sort: \WorkoutSession.date, order: .reverse) private var sessions: [WorkoutSession]
     @Environment(\.modelContext) private var modelContext
-    @State private var showingProgressReports = false
 
     // Get all unique exercise names from history
     private var uniqueExerciseNames: [String] {
@@ -56,74 +56,46 @@ struct HistoryListView: View {
                 if sessions.isEmpty {
                     emptyStateView
                 } else {
-                    List {
-                        // Summary Stats Section
-                        Section {
-                            HStack(spacing: 16) {
-                                SummaryStatCard(
-                                    title: "Workouts",
-                                    value: "\(totalWorkouts)",
-                                    icon: "flame.fill",
-                                    color: .orange
-                                )
-                                SummaryStatCard(
-                                    title: "Volume",
-                                    value: formatVolume(totalVolume),
-                                    icon: "scalemass.fill",
-                                    color: .blue
-                                )
-                                SummaryStatCard(
-                                    title: "Time",
-                                    value: formatTotalTime(totalDuration),
-                                    icon: "clock.fill",
-                                    color: .green
-                                )
-                            }
-                            .listRowInsets(EdgeInsets())
-                            .listRowBackground(Color.clear)
-                        }
-
-                        // Progress Reports Section
-                        Section("Progress Reports") {
-                            NavigationLink(destination: ExerciseSelectionView(exerciseNames: uniqueExerciseNames)) {
-                                HStack(spacing: 16) {
-                                    Image(systemName: "chart.line.uptrend.xyaxis")
-                                        .font(.title2)
-                                        .foregroundStyle(.blue)
-                                        .frame(width: 44, height: 44)
-                                        .background(Color.blue.opacity(0.1))
-                                        .cornerRadius(10)
-
-                                    VStack(alignment: .leading, spacing: 4) {
-                                        Text("Exercise Progress")
-                                            .font(.headline)
-
-                                        Text("View graphs and PRs for each exercise")
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                                .padding(.vertical, 4)
-                            }
-                        }
-
-                        // Workout History
-                        ForEach(groupedSessions, id: \.0) { group, groupSessions in
-                            Section(group) {
-                                ForEach(groupSessions) { session in
-                                    NavigationLink(destination: HistoryDetailView(session: session)) {
-                                        HistoryRowView(session: session)
-                                    }
-                                }
-                                .onDelete { indexSet in
-                                    deleteSession(in: groupSessions, at: indexSet)
-                                }
-                            }
-                        }
-                    }
+                    sessionsList
                 }
             }
             .navigationTitle("History")
+        }
+    }
+
+    private var sessionsList: some View {
+        List {
+            // Summary Stats Section
+            Section {
+                HStack(spacing: 16) {
+                    SummaryStatCard(title: "Workouts", value: "\(totalWorkouts)", icon: "flame.fill", color: .orange)
+                    SummaryStatCard(title: "Volume", value: formatVolume(totalVolume), icon: "scalemass.fill", color: .blue)
+                    SummaryStatCard(title: "Time", value: formatTotalTime(totalDuration), icon: "clock.fill", color: .green)
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            }
+
+            // Progress Reports Section
+            Section("Progress Reports") {
+                NavigationLink(destination: ExerciseSelectionView(exerciseNames: uniqueExerciseNames)) {
+                    ProgressReportsRow()
+                }
+            }
+
+            // Workout History
+            ForEach(groupedSessions, id: \.0) { item in
+                Section(item.0) {
+                    ForEach(item.1) { session in
+                        NavigationLink(destination: HistoryDetailView(session: session)) {
+                            HistoryRowView(session: session)
+                        }
+                    }
+                    .onDelete { indexSet in
+                        deleteSession(in: item.1, at: indexSet)
+                    }
+                }
+            }
         }
     }
 
@@ -170,6 +142,31 @@ struct HistoryListView: View {
     }
 }
 
+// MARK: - Progress Reports Row
+struct ProgressReportsRow: View {
+    var body: some View {
+        HStack(spacing: 16) {
+            Image(systemName: "chart.line.uptrend.xyaxis")
+                .font(.title2)
+                .foregroundStyle(.blue)
+                .frame(width: 44, height: 44)
+                .background(Color.blue.opacity(0.1))
+                .cornerRadius(10)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Exercise Progress")
+                    .font(.headline)
+
+                Text("View graphs and PRs for each exercise")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+// MARK: - History Row View
 struct HistoryRowView: View {
     let session: WorkoutSession
 
@@ -240,116 +237,299 @@ struct ExerciseSelectionView: View {
         return exerciseNames.filter { $0.localizedCaseInsensitiveContains(searchText) }
     }
 
-    // Group exercises by muscle group (simplified)
-    private var groupedExercises: [(String, [String])] {
-        let muscleGroupMap: [String: String] = [
-            "Bench Press": "Chest",
-            "Incline Dumbbell Press": "Chest",
-            "Dumbbell Flyes": "Chest",
-            "Push-Ups": "Chest",
-            "Cable Crossover": "Chest",
-            "Deadlift": "Back",
-            "Pull-Ups": "Back",
-            "Barbell Rows": "Back",
-            "Lat Pulldown": "Back",
-            "Seated Cable Row": "Back",
-            "Dumbbell Rows": "Back",
-            "Overhead Press": "Shoulders",
-            "Lateral Raises": "Shoulders",
-            "Front Raises": "Shoulders",
-            "Arnold Press": "Shoulders",
-            "Face Pulls": "Shoulders",
-            "Reverse Flyes": "Shoulders",
-            "Bicep Curls": "Arms",
-            "Hammer Curls": "Arms",
-            "Preacher Curls": "Arms",
-            "Incline Dumbbell Curls": "Arms",
-            "Tricep Dips": "Arms",
-            "Tricep Pushdown": "Arms",
-            "Skull Crushers": "Arms",
-            "Overhead Tricep Extension": "Arms",
-            "Barbell Squats": "Legs",
-            "Leg Press": "Legs",
-            "Leg Extensions": "Legs",
-            "Walking Lunges": "Legs",
-            "Bulgarian Split Squats": "Legs",
-            "Goblet Squats": "Legs",
-            "Romanian Deadlift": "Legs",
-            "Leg Curls": "Legs",
-            "Hip Thrusts": "Legs",
-            "Glute Bridges": "Legs",
-            "Good Mornings": "Legs",
-            "Calf Raises": "Legs",
-            "Seated Calf Raises": "Legs",
-            "Planks": "Core",
-            "Cable Crunches": "Core",
-            "Hanging Leg Raises": "Core",
-            "Russian Twists": "Core"
-        ]
-
-        var grouped: [String: [String]] = [:]
-        for exercise in filteredExercises {
-            let group = muscleGroupMap[exercise] ?? "Other"
-            grouped[group, default: []].append(exercise)
-        }
-
-        let order = ["Chest", "Back", "Shoulders", "Arms", "Legs", "Core", "Other"]
-        return order.compactMap { group in
-            guard let exercises = grouped[group], !exercises.isEmpty else { return nil }
-            return (group, exercises.sorted())
-        }
-    }
-
     var body: some View {
         List {
             if filteredExercises.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "magnifyingglass")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.secondary)
-
-                    Text("No exercises found")
-                        .font(.headline)
-
-                    Text("Complete workouts to see exercises here")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 40)
-                .listRowBackground(Color.clear)
+                emptyView
             } else {
-                ForEach(groupedExercises, id: \.0) { group, exercises in
-                    Section(group) {
-                        ForEach(exercises, id: \.self) { exerciseName in
-                            NavigationLink(destination: ExerciseProgressView(exerciseName: exerciseName)) {
-                                HStack {
-                                    Image(systemName: iconForGroup(group))
-                                        .foregroundStyle(.blue)
-                                        .frame(width: 30)
-
-                                    Text(exerciseName)
-                                }
-                            }
-                        }
-                    }
-                }
+                exercisesList
             }
         }
         .navigationTitle("Exercise Progress")
         .searchable(text: $searchText, prompt: "Search exercises")
     }
 
-    private func iconForGroup(_ group: String) -> String {
-        switch group {
-        case "Chest": return "figure.arms.open"
-        case "Back": return "figure.strengthtraining.traditional"
-        case "Shoulders": return "figure.arms.open"
-        case "Arms": return "figure.strengthtraining.traditional"
-        case "Legs": return "figure.walk"
-        case "Core": return "figure.core.training"
-        default: return "figure.mixed.cardio"
+    private var emptyView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+
+            Text("No exercises found")
+                .font(.headline)
+
+            Text("Complete workouts to see exercises here")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 40)
+        .listRowBackground(Color.clear)
+    }
+
+    private var exercisesList: some View {
+        ForEach(filteredExercises, id: \.self) { exerciseName in
+            NavigationLink(destination: ExerciseProgressView(exerciseName: exerciseName)) {
+                ExerciseRowView(exerciseName: exerciseName)
+            }
+        }
+    }
+}
+
+// MARK: - Exercise Row View
+struct ExerciseRowView: View {
+    let exerciseName: String
+
+    var body: some View {
+        HStack {
+            Image(systemName: "figure.strengthtraining.traditional")
+                .foregroundStyle(.blue)
+                .frame(width: 30)
+
+            Text(exerciseName)
+        }
+    }
+}
+
+// MARK: - Exercise Progress View
+struct ExerciseProgressView: View {
+    let exerciseName: String
+    @Query(sort: \WorkoutSession.date, order: .forward) private var allSessions: [WorkoutSession]
+
+    @State private var selectedTimeRange: Int = 90 // days
+
+    private var filteredSessions: [WorkoutSession] {
+        let cutoffDate = Calendar.current.date(byAdding: .day, value: -selectedTimeRange, to: Date()) ?? Date()
+        return allSessions.filter { $0.date >= cutoffDate }
+    }
+
+    private var chartData: [(date: Date, weight: Double)] {
+        var data: [(Date, Double)] = []
+        for session in filteredSessions {
+            let exerciseSets = session.exerciseSets.filter { $0.exerciseName == exerciseName }
+            if let maxWeight = exerciseSets.map({ $0.weight }).max(), maxWeight > 0 {
+                data.append((session.date, maxWeight))
+            }
+        }
+        return data.sorted { $0.0 < $1.0 }
+    }
+
+    private var personalRecords: (maxWeight: Double, maxVolume: Double) {
+        var maxWeight: Double = 0
+        var maxVolume: Double = 0
+
+        for session in allSessions {
+            let exerciseSets = session.exerciseSets.filter { $0.exerciseName == exerciseName }
+            for set in exerciseSets {
+                maxWeight = max(maxWeight, set.weight)
+                let volume = set.weight * Double(set.reps)
+                maxVolume = max(maxVolume, volume)
+            }
+        }
+
+        return (maxWeight, maxVolume)
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 20) {
+                // Personal Records Section
+                personalRecordsSection
+
+                // Time Range Picker
+                Picker("Time Range", selection: $selectedTimeRange) {
+                    Text("30 Days").tag(30)
+                    Text("3 Months").tag(90)
+                    Text("1 Year").tag(365)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+
+                // Chart
+                if chartData.isEmpty {
+                    emptyChartView
+                } else {
+                    chartView
+                }
+
+                // History List
+                historyListSection
+            }
+            .padding(.vertical)
+        }
+        .navigationTitle(exerciseName)
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var personalRecordsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Personal Records")
+                .font(.headline)
+                .padding(.horizontal)
+
+            HStack(spacing: 12) {
+                PRCard(title: "Max Weight", value: "\(Int(personalRecords.maxWeight))", unit: "lbs", color: .blue)
+                PRCard(title: "Best Volume", value: formatVolume(personalRecords.maxVolume), unit: "", color: .green)
+            }
+            .padding(.horizontal)
+        }
+    }
+
+    private var chartView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Weight Over Time")
+                .font(.headline)
+                .padding(.horizontal)
+
+            Chart {
+                ForEach(chartData, id: \.date) { item in
+                    LineMark(
+                        x: .value("Date", item.date),
+                        y: .value("Weight", item.weight)
+                    )
+                    .foregroundStyle(Color.blue)
+
+                    PointMark(
+                        x: .value("Date", item.date),
+                        y: .value("Weight", item.weight)
+                    )
+                    .foregroundStyle(Color.blue)
+                }
+            }
+            .frame(height: 200)
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(16)
+            .padding(.horizontal)
+        }
+    }
+
+    private var emptyChartView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "chart.line.uptrend.xyaxis")
+                .font(.system(size: 50))
+                .foregroundStyle(.secondary)
+
+            Text("No Data Available")
+                .font(.headline)
+
+            Text("Complete workouts with this exercise to see your progress")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(height: 200)
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(16)
+        .padding(.horizontal)
+    }
+
+    private var historyListSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Recent Sessions")
+                .font(.headline)
+                .padding(.horizontal)
+
+            let sessionsWithExercise = filteredSessions.filter { session in
+                session.exerciseSets.contains { $0.exerciseName == exerciseName }
+            }.sorted { $0.date > $1.date }
+
+            if sessionsWithExercise.isEmpty {
+                Text("No sessions found for this exercise")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal)
+            } else {
+                ForEach(sessionsWithExercise.prefix(10)) { session in
+                    SessionExerciseRowView(session: session, exerciseName: exerciseName)
+                        .padding(.horizontal)
+                }
+            }
+        }
+    }
+
+    private func formatVolume(_ volume: Double) -> String {
+        if volume >= 1000 {
+            return String(format: "%.1fk", volume / 1000)
+        }
+        return "\(Int(volume))"
+    }
+}
+
+// MARK: - PR Card
+struct PRCard: View {
+    let title: String
+    let value: String
+    let unit: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(value)
+                .font(.title)
+                .fontWeight(.bold)
+                .foregroundStyle(color)
+
+            if !unit.isEmpty {
+                Text(unit)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Session Exercise Row View
+struct SessionExerciseRowView: View {
+    let session: WorkoutSession
+    let exerciseName: String
+
+    private var sets: [ExerciseSet] {
+        session.exerciseSets.filter { $0.exerciseName == exerciseName }
+    }
+
+    private var maxWeight: Double {
+        sets.map { $0.weight }.max() ?? 0
+    }
+
+    private var totalReps: Int {
+        sets.reduce(0) { $0 + $1.reps }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(session.formattedDate)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+
+                Spacer()
+
+                Text("\(sets.count) sets")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack(spacing: 16) {
+                Label("\(Int(maxWeight)) lbs", systemImage: "scalemass")
+                Label("\(totalReps) reps", systemImage: "number")
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+        }
+        .padding()
+        .background(Color(.systemGray6))
+        .cornerRadius(12)
     }
 }
 
