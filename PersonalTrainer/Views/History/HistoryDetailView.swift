@@ -43,7 +43,7 @@ struct HistoryDetailView: View {
                         Spacer()
 
                         // Difficulty feedback badge if present
-                        if let feedback = session.feedbackEnum {
+                        if let feedback = session.feedback {
                             Text(feedback.emoji)
                                 .font(.title2)
                         }
