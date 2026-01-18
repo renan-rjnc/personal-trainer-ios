@@ -1,11 +1,17 @@
 import SwiftUI
 import SwiftData
 
+enum HistoryViewMode: String, CaseIterable {
+    case simple = "Simple"
+    case detailed = "Detailed"
+}
+
 struct HistoryDetailView: View {
     let session: WorkoutSession
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @State private var showingDeleteAlert = false
+    @State private var viewMode: HistoryViewMode = .simple
 
     private var groupedSets: [(String, [ExerciseSet])] {
         let grouped = Dictionary(grouping: session.exerciseSets) { $0.exerciseName }
@@ -14,6 +20,10 @@ struct HistoryDetailView: View {
             let secondMinSet = second.value.min(by: { $0.setNumber < $1.setNumber })?.setNumber ?? 0
             return firstMinSet < secondMinSet
         }
+    }
+
+    private var exerciseCount: Int {
+        Set(session.exerciseSets.map { $0.exerciseName }).count
     }
 
     var body: some View {
@@ -31,10 +41,17 @@ struct HistoryDetailView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
+
+                        // Difficulty feedback badge if present
+                        if let feedback = session.feedbackEnum {
+                            Text(feedback.emoji)
+                                .font(.title2)
+                        }
                     }
 
-                    HStack(spacing: 24) {
+                    HStack(spacing: 16) {
                         StatItem(title: "Duration", value: session.formattedDuration, icon: "clock.fill")
+                        StatItem(title: "Exercises", value: "\(exerciseCount)", icon: "list.bullet")
                         StatItem(title: "Sets", value: "\(session.totalSets)", icon: "checkmark.circle.fill")
                         StatItem(title: "Volume", value: formatVolume(session.totalVolume), icon: "scalemass.fill")
                     }
@@ -42,50 +59,21 @@ struct HistoryDetailView: View {
                 .padding(.vertical, 8)
             }
 
-            // Exercise Details
-            ForEach(groupedSets, id: \.0) { exerciseName, sets in
-                Section(exerciseName) {
-                    ForEach(sets.sorted(by: { $0.setNumber < $1.setNumber })) { set in
-                        HStack {
-                            Text("Set \(set.setNumber)")
-                                .foregroundStyle(.secondary)
-
-                            Spacer()
-
-                            Text("\(set.reps) reps")
-                                .fontWeight(.medium)
-
-                            Text("×")
-                                .foregroundStyle(.secondary)
-
-                            Text("\(Int(set.weight)) lbs")
-                                .fontWeight(.medium)
-                                .foregroundStyle(.blue)
-                        }
+            // View Mode Picker
+            Section {
+                Picker("View Mode", selection: $viewMode) {
+                    ForEach(HistoryViewMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
                     }
-
-                    // Exercise summary row
-                    HStack {
-                        Text("Total")
-                            .fontWeight(.semibold)
-
-                        Spacer()
-
-                        let totalReps = sets.reduce(0) { $0 + $1.reps }
-                        let avgWeight = sets.isEmpty ? 0 : sets.reduce(0.0) { $0 + $1.weight } / Double(sets.count)
-
-                        Text("\(totalReps) reps")
-                            .foregroundStyle(.secondary)
-
-                        Text("•")
-                            .foregroundStyle(.secondary)
-
-                        Text("Avg \(Int(avgWeight)) lbs")
-                            .foregroundStyle(.secondary)
-                    }
-                    .font(.caption)
-                    .padding(.top, 4)
                 }
+                .pickerStyle(.segmented)
+            }
+
+            // Exercise Details based on view mode
+            if viewMode == .simple {
+                simpleExerciseView
+            } else {
+                detailedExerciseView
             }
 
             // Delete Section
@@ -110,6 +98,101 @@ struct HistoryDetailView: View {
             }
         } message: {
             Text("This action cannot be undone.")
+        }
+    }
+
+    // MARK: - Simple View
+    private var simpleExerciseView: some View {
+        Section("Exercises") {
+            ForEach(groupedSets, id: \.0) { exerciseName, sets in
+                HStack {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(exerciseName)
+                            .font(.headline)
+
+                        let totalReps = sets.reduce(0) { $0 + $1.reps }
+                        let maxWeight = sets.map { $0.weight }.max() ?? 0
+
+                        Text("\(sets.count) sets • \(totalReps) reps • Max \(Int(maxWeight)) lbs")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    // Show PR badge if best weight
+                    let volume = sets.reduce(0.0) { $0 + ($1.weight * Double($1.reps)) }
+                    Text(formatVolume(volume))
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.blue)
+                }
+                .padding(.vertical, 4)
+            }
+        }
+    }
+
+    // MARK: - Detailed View
+    private var detailedExerciseView: some View {
+        ForEach(groupedSets, id: \.0) { exerciseName, sets in
+            Section(exerciseName) {
+                ForEach(sets.sorted(by: { $0.setNumber < $1.setNumber })) { set in
+                    HStack {
+                        Text("Set \(set.setNumber)")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 50, alignment: .leading)
+
+                        Spacer()
+
+                        Text("\(set.reps) reps")
+                            .fontWeight(.medium)
+
+                        Text("×")
+                            .foregroundStyle(.secondary)
+
+                        Text("\(Int(set.weight)) lbs")
+                            .fontWeight(.medium)
+                            .foregroundStyle(.blue)
+                            .frame(width: 70, alignment: .trailing)
+
+                        // Volume for this set
+                        Text("= \(Int(set.weight * Double(set.reps)))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 60, alignment: .trailing)
+                    }
+                }
+
+                // Exercise summary row
+                HStack {
+                    Text("Total")
+                        .fontWeight(.semibold)
+
+                    Spacer()
+
+                    let totalReps = sets.reduce(0) { $0 + $1.reps }
+                    let avgWeight = sets.isEmpty ? 0 : sets.reduce(0.0) { $0 + $1.weight } / Double(sets.count)
+                    let totalVolume = sets.reduce(0.0) { $0 + ($1.weight * Double($1.reps)) }
+
+                    Text("\(totalReps) reps")
+                        .foregroundStyle(.secondary)
+
+                    Text("•")
+                        .foregroundStyle(.secondary)
+
+                    Text("Avg \(Int(avgWeight)) lbs")
+                        .foregroundStyle(.secondary)
+
+                    Text("•")
+                        .foregroundStyle(.secondary)
+
+                    Text(formatVolume(totalVolume) + " vol")
+                        .foregroundStyle(.blue)
+                        .fontWeight(.medium)
+                }
+                .font(.caption)
+                .padding(.top, 4)
+            }
         }
     }
 

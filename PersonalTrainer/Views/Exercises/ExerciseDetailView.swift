@@ -3,6 +3,14 @@ import SwiftUI
 struct ExerciseDetailView: View {
     let exercise: Exercise
 
+    private var videoURL: String? {
+        exercise.videoURL ?? ExerciseVideoLibrary.getVideoURL(for: exercise.name)
+    }
+
+    private var formTips: [String] {
+        exercise.formTips.isEmpty ? ExerciseVideoLibrary.getFormTips(for: exercise.name) : exercise.formTips
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -10,10 +18,10 @@ struct ExerciseDetailView: View {
                 ZStack {
                     Circle()
                         .fill(Color.blue.opacity(0.1))
-                        .frame(width: 150, height: 150)
+                        .frame(width: 120, height: 120)
 
                     Image(systemName: exercise.imageName)
-                        .font(.system(size: 60))
+                        .font(.system(size: 50))
                         .foregroundStyle(.blue)
                 }
                 .padding(.top)
@@ -28,6 +36,11 @@ struct ExerciseDetailView: View {
                     Text(exercise.muscleGroups.joined(separator: " • "))
                         .font(.headline)
                         .foregroundStyle(.secondary)
+                }
+
+                // Video Section
+                if let urlString = videoURL, let url = URL(string: urlString) {
+                    VideoLinkSection(url: url)
                 }
 
                 // Recommended Sets/Reps
@@ -73,6 +86,11 @@ struct ExerciseDetailView: View {
                 .background(Color(.systemGray6))
                 .cornerRadius(16)
 
+                // Form Tips Section
+                if !formTips.isEmpty {
+                    FormTipsSection(tips: formTips)
+                }
+
                 // Target Muscles
                 VStack(alignment: .leading, spacing: 12) {
                     Label("Target Muscles", systemImage: "figure.strengthtraining.traditional")
@@ -100,6 +118,109 @@ struct ExerciseDetailView: View {
             .padding()
         }
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Video Link Section
+struct VideoLinkSection: View {
+    let url: URL
+    @Environment(\.openURL) private var openURL
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Video Demonstration", systemImage: "play.rectangle.fill")
+                .font(.headline)
+
+            Button(action: {
+                openURL(url)
+            }) {
+                HStack(spacing: 16) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.red.opacity(0.1))
+                            .frame(width: 80, height: 60)
+
+                        Image(systemName: "play.fill")
+                            .font(.title2)
+                            .foregroundStyle(.red)
+                    }
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Watch Form Guide")
+                            .font(.headline)
+                            .foregroundStyle(.primary)
+
+                        Text("Learn proper technique and alignment")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: "arrow.up.right.square")
+                        .font(.title2)
+                        .foregroundStyle(.blue)
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+// MARK: - Form Tips Section
+struct FormTipsSection: View {
+    let tips: [String]
+    @State private var isExpanded = true
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: {
+                withAnimation {
+                    isExpanded.toggle()
+                }
+            }) {
+                HStack {
+                    Label("Form Tips", systemImage: "checkmark.shield.fill")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 10) {
+                    ForEach(Array(tips.enumerated()), id: \.offset) { index, tip in
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "\(index + 1).circle.fill")
+                                .foregroundStyle(.green)
+                                .font(.body)
+
+                            Text(tip)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .padding(.top, 4)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.green.opacity(0.05))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.green.opacity(0.2), lineWidth: 1)
+        )
+        .cornerRadius(16)
     }
 }
 
