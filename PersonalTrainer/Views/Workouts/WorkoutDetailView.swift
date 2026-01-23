@@ -63,13 +63,6 @@ struct WorkoutDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
-        .fullScreenCover(isPresented: $workoutViewModel.isWorkoutActive) {
-            ActiveWorkoutView(
-                workoutViewModel: workoutViewModel,
-                timerViewModel: timerViewModel,
-                workout: workout
-            )
-        }
     }
 }
 

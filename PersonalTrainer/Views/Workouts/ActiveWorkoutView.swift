@@ -220,11 +220,24 @@ struct ExercisePageView: View {
     let onMarkDone: () -> Void
     let onSkip: () -> Void
 
+    @State private var showingFormGuide = false
+
+    private var videoURL: String? {
+        exercise.videoURL ?? ExerciseVideoLibrary.getVideoURL(for: exercise.name)
+    }
+
+    private var formTips: [String] {
+        exercise.formTips.isEmpty ? ExerciseVideoLibrary.getFormTips(for: exercise.name) : exercise.formTips
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
                 // Exercise Header with Status
                 exerciseHeader
+
+                // Form Guide Button
+                formGuideSection
 
                 // Set Input Section
                 setInputSection
@@ -240,6 +253,41 @@ struct ExercisePageView: View {
             }
             .padding()
         }
+        .sheet(isPresented: $showingFormGuide) {
+            FormGuideSheet(exercise: exercise, videoURL: videoURL, formTips: formTips)
+        }
+    }
+
+    private var formGuideSection: some View {
+        Button(action: {
+            showingFormGuide = true
+        }) {
+            HStack(spacing: 12) {
+                Image(systemName: "play.rectangle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.red)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("How to Perform")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+
+                    Text("Watch video & form tips")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.secondary)
+            }
+            .padding()
+            .background(Color.red.opacity(0.1))
+            .cornerRadius(12)
+        }
+        .buttonStyle(.plain)
     }
 
     private var exerciseHeader: some View {
@@ -459,6 +507,224 @@ struct ExercisePageView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.top, 8)
+    }
+}
+
+// MARK: - Form Guide Sheet
+struct FormGuideSheet: View {
+    let exercise: Exercise
+    let videoURL: String?
+    let formTips: [String]
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
+
+    private var gifURL: String? {
+        exercise.gifURL ?? ExerciseVideoLibrary.getGifURL(for: exercise.name)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Exercise Visual
+                    if let gifURLString = gifURL, let url = URL(string: gifURLString) {
+                        AsyncImage(url: url) { phase in
+                            switch phase {
+                            case .empty:
+                                ProgressView()
+                                    .frame(height: 200)
+                            case .success(let image):
+                                image
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(maxHeight: 250)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                            case .failure:
+                                exerciseIconView
+                            @unknown default:
+                                exerciseIconView
+                            }
+                        }
+                    } else {
+                        exerciseIconView
+                    }
+
+                    // Video Button
+                    if let urlString = videoURL, let url = URL(string: urlString) {
+                        Button(action: {
+                            openURL(url)
+                        }) {
+                            HStack(spacing: 16) {
+                                ZStack {
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color.red.opacity(0.1))
+                                        .frame(width: 60, height: 50)
+
+                                    Image(systemName: "play.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.red)
+                                }
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Watch Full Video")
+                                        .font(.headline)
+                                        .foregroundStyle(.primary)
+
+                                    Text("Opens in YouTube")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "arrow.up.right.square")
+                                    .font(.title2)
+                                    .foregroundStyle(.red)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    // Instructions
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Instructions", systemImage: "text.alignleft")
+                            .font(.headline)
+
+                        Text(exercise.instructions)
+                            .font(.body)
+                            .lineSpacing(4)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+
+                    // Form Tips
+                    if !formTips.isEmpty {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Label("Form Tips", systemImage: "checkmark.shield.fill")
+                                .font(.headline)
+                                .foregroundStyle(.green)
+
+                            ForEach(Array(formTips.enumerated()), id: \.offset) { index, tip in
+                                HStack(alignment: .top, spacing: 12) {
+                                    Image(systemName: "\(index + 1).circle.fill")
+                                        .foregroundStyle(.green)
+                                        .font(.body)
+
+                                    Text(tip)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color.green.opacity(0.05))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(Color.green.opacity(0.2), lineWidth: 1)
+                        )
+                        .cornerRadius(12)
+                    }
+
+                    // Target Muscles
+                    VStack(alignment: .leading, spacing: 12) {
+                        Label("Target Muscles", systemImage: "figure.strengthtraining.traditional")
+                            .font(.headline)
+
+                        FlowLayoutCompact(spacing: 8) {
+                            ForEach(exercise.muscleGroups, id: \.self) { muscle in
+                                Text(muscle)
+                                    .font(.subheadline)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.blue.opacity(0.1))
+                                    .foregroundStyle(.blue)
+                                    .cornerRadius(20)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                }
+                .padding()
+            }
+            .navigationTitle(exercise.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    private var exerciseIconView: some View {
+        ZStack {
+            Circle()
+                .fill(exercise.isCardio ? Color.orange.opacity(0.1) : Color.blue.opacity(0.1))
+                .frame(width: 120, height: 120)
+
+            Image(systemName: exercise.imageName)
+                .font(.system(size: 50))
+                .foregroundStyle(exercise.isCardio ? .orange : .blue)
+        }
+    }
+}
+
+// Simple flow layout for the form guide sheet
+struct FlowLayoutCompact: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = FlowResultCompact(in: proposal.width ?? 0, spacing: spacing, subviews: subviews)
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = FlowResultCompact(in: bounds.width, spacing: spacing, subviews: subviews)
+        for (index, subview) in subviews.enumerated() {
+            subview.place(at: CGPoint(x: bounds.minX + result.positions[index].x,
+                                      y: bounds.minY + result.positions[index].y),
+                          proposal: .unspecified)
+        }
+    }
+
+    struct FlowResultCompact {
+        var size: CGSize = .zero
+        var positions: [CGPoint] = []
+
+        init(in maxWidth: CGFloat, spacing: CGFloat, subviews: Subviews) {
+            var x: CGFloat = 0
+            var y: CGFloat = 0
+            var rowHeight: CGFloat = 0
+
+            for subview in subviews {
+                let size = subview.sizeThatFits(.unspecified)
+
+                if x + size.width > maxWidth && x > 0 {
+                    x = 0
+                    y += rowHeight + spacing
+                    rowHeight = 0
+                }
+
+                positions.append(CGPoint(x: x, y: y))
+                rowHeight = max(rowHeight, size.height)
+                x += size.width + spacing
+            }
+
+            self.size = CGSize(width: maxWidth, height: y + rowHeight)
+        }
     }
 }
 

@@ -6,7 +6,6 @@ struct HomeView: View {
     @Bindable var timerViewModel: TimerViewModel
     @Query(sort: \WorkoutSession.date, order: .reverse) private var recentSessions: [WorkoutSession]
     @Query(sort: \CustomWorkoutPlan.createdDate, order: .forward) private var customPlans: [CustomWorkoutPlan]
-    @Environment(\.modelContext) private var modelContext
 
     // Get the next suggested workout based on the last completed custom plan day
     private var nextSuggestedWorkout: CustomWorkoutPlan? {
@@ -62,30 +61,6 @@ struct HomeView: View {
                 .padding()
             }
             .navigationTitle("Personal Trainer")
-            .fullScreenCover(isPresented: $workoutViewModel.isWorkoutActive) {
-                if let workout = workoutViewModel.currentWorkout {
-                    ActiveWorkoutView(
-                        workoutViewModel: workoutViewModel,
-                        timerViewModel: timerViewModel,
-                        workout: workout
-                    )
-                }
-            }
-            .sheet(isPresented: $workoutViewModel.showFeedbackSheet) {
-                if let session = workoutViewModel.completedSession {
-                    WorkoutFeedbackView(
-                        session: session,
-                        onSubmit: { feedback in
-                            workoutViewModel.submitFeedback(feedback, modelContext: modelContext)
-                        },
-                        onSkip: {
-                            workoutViewModel.completedSession = nil
-                            workoutViewModel.showFeedbackSheet = false
-                        }
-                    )
-                    .presentationDetents([.medium, .large])
-                }
-            }
         }
     }
 

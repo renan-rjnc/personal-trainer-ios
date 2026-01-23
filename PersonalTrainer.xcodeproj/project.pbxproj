@@ -28,6 +28,7 @@
 		019 /* WorkoutPlanGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 119 /* WorkoutPlanGenerator.swift */; };
 		020 /* CreatePlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 120 /* CreatePlanView.swift */; };
 		021 /* WorkoutFeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121 /* WorkoutFeedbackView.swift */; };
+		022 /* UserProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 122 /* UserProfile.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +54,7 @@
 		119 /* WorkoutPlanGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutPlanGenerator.swift; sourceTree = "<group>"; };
 		120 /* CreatePlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatePlanView.swift; sourceTree = "<group>"; };
 		121 /* WorkoutFeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFeedbackView.swift; sourceTree = "<group>"; };
+		122 /* UserProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserProfile.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +105,7 @@
 				112 /* ExerciseSet.swift */,
 				113 /* WorkoutSession.swift */,
 				118 /* CustomWorkoutPlan.swift */,
+				122 /* UserProfile.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -263,6 +266,7 @@
 				019 /* WorkoutPlanGenerator.swift in Sources */,
 				020 /* CreatePlanView.swift in Sources */,
 				021 /* WorkoutFeedbackView.swift in Sources */,
+				022 /* UserProfile.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

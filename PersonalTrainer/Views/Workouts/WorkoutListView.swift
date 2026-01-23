@@ -9,8 +9,18 @@ struct WorkoutListView: View {
     @Environment(\.modelContext) private var modelContext
 
     @State private var showingCreatePlan = false
+    @State private var showPreviousPlans = false
 
     let prebuiltWorkouts = SampleWorkouts.allWorkouts
+
+    // Filter active and previous plans
+    private var activePlans: [CustomWorkoutPlan] {
+        customPlans.filter { $0.isActive }
+    }
+
+    private var previousPlans: [CustomWorkoutPlan] {
+        customPlans.filter { !$0.isActive }
+    }
 
     var body: some View {
         NavigationStack {
@@ -48,10 +58,10 @@ struct WorkoutListView: View {
                     .buttonStyle(.plain)
                 }
 
-                // Custom Plans Section
-                if !customPlans.isEmpty {
-                    Section("My Plans") {
-                        ForEach(customPlans) { customPlan in
+                // Active Plans Section (Current Routine)
+                if !activePlans.isEmpty {
+                    Section("My Current Plan") {
+                        ForEach(activePlans) { customPlan in
                             NavigationLink(destination: WorkoutDetailView(
                                 workout: customPlan.toWorkoutPlan(),
                                 workoutViewModel: workoutViewModel,
@@ -60,7 +70,36 @@ struct WorkoutListView: View {
                                 CustomPlanRowView(plan: customPlan)
                             }
                         }
-                        .onDelete(perform: deleteCustomPlans)
+                        .onDelete(perform: deleteActivePlans)
+                    }
+                }
+
+                // Previous Plans Section (Archived)
+                if !previousPlans.isEmpty {
+                    Section {
+                        DisclosureGroup(isExpanded: $showPreviousPlans) {
+                            ForEach(previousPlans) { customPlan in
+                                NavigationLink(destination: WorkoutDetailView(
+                                    workout: customPlan.toWorkoutPlan(),
+                                    workoutViewModel: workoutViewModel,
+                                    timerViewModel: timerViewModel
+                                )) {
+                                    CustomPlanRowView(plan: customPlan, isArchived: true)
+                                }
+                            }
+                            .onDelete(perform: deletePreviousPlans)
+                        } label: {
+                            HStack {
+                                Image(systemName: "archivebox.fill")
+                                    .foregroundStyle(.secondary)
+                                Text("Previous Plans")
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Text("\(previousPlans.count)")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
 
@@ -81,55 +120,39 @@ struct WorkoutListView: View {
             .sheet(isPresented: $showingCreatePlan) {
                 CreatePlanView()
             }
-            .fullScreenCover(isPresented: $workoutViewModel.isWorkoutActive) {
-                if let workout = workoutViewModel.currentWorkout {
-                    ActiveWorkoutView(
-                        workoutViewModel: workoutViewModel,
-                        timerViewModel: timerViewModel,
-                        workout: workout
-                    )
-                }
-            }
-            .sheet(isPresented: $workoutViewModel.showFeedbackSheet) {
-                if let session = workoutViewModel.completedSession {
-                    WorkoutFeedbackView(
-                        session: session,
-                        onSubmit: { feedback in
-                            workoutViewModel.submitFeedback(feedback, modelContext: modelContext)
-                        },
-                        onSkip: {
-                            workoutViewModel.completedSession = nil
-                            workoutViewModel.showFeedbackSheet = false
-                        }
-                    )
-                    .presentationDetents([.medium, .large])
-                }
-            }
         }
     }
 
-    private func deleteCustomPlans(at offsets: IndexSet) {
+    private func deleteActivePlans(at offsets: IndexSet) {
         for index in offsets {
-            modelContext.delete(customPlans[index])
+            modelContext.delete(activePlans[index])
+        }
+    }
+
+    private func deletePreviousPlans(at offsets: IndexSet) {
+        for index in offsets {
+            modelContext.delete(previousPlans[index])
         }
     }
 }
 
 struct CustomPlanRowView: View {
     let plan: CustomWorkoutPlan
+    var isArchived: Bool = false
 
     var body: some View {
         HStack(spacing: 16) {
             Image(systemName: plan.iconName)
                 .font(.title2)
-                .foregroundStyle(.purple)
+                .foregroundStyle(isArchived ? .gray : .purple)
                 .frame(width: 44, height: 44)
-                .background(Color.purple.opacity(0.1))
+                .background(isArchived ? Color.gray.opacity(0.1) : Color.purple.opacity(0.1))
                 .cornerRadius(10)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(plan.name)
                     .font(.headline)
+                    .foregroundStyle(isArchived ? .secondary : .primary)
 
                 Text(plan.planDescription)
                     .font(.subheadline)

@@ -4,6 +4,7 @@ struct MainTabView: View {
     @State private var selectedTab = 0
     @State private var workoutViewModel = WorkoutViewModel()
     @State private var timerViewModel = TimerViewModel()
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -26,6 +27,30 @@ struct MainTabView: View {
                 .tag(2)
         }
         .tint(.blue)
+        .fullScreenCover(isPresented: $workoutViewModel.isWorkoutActive) {
+            if let workout = workoutViewModel.currentWorkout {
+                ActiveWorkoutView(
+                    workoutViewModel: workoutViewModel,
+                    timerViewModel: timerViewModel,
+                    workout: workout
+                )
+            }
+        }
+        .sheet(isPresented: $workoutViewModel.showFeedbackSheet) {
+            if let session = workoutViewModel.completedSession {
+                WorkoutFeedbackView(
+                    session: session,
+                    onSubmit: { feedback in
+                        workoutViewModel.submitFeedback(feedback, modelContext: modelContext)
+                    },
+                    onSkip: {
+                        workoutViewModel.completedSession = nil
+                        workoutViewModel.showFeedbackSheet = false
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            }
+        }
     }
 }
 

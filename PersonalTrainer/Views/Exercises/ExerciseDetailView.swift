@@ -7,6 +7,10 @@ struct ExerciseDetailView: View {
         exercise.videoURL ?? ExerciseVideoLibrary.getVideoURL(for: exercise.name)
     }
 
+    private var gifURL: String? {
+        exercise.gifURL ?? ExerciseVideoLibrary.getGifURL(for: exercise.name)
+    }
+
     private var formTips: [String] {
         exercise.formTips.isEmpty ? ExerciseVideoLibrary.getFormTips(for: exercise.name) : exercise.formTips
     }
@@ -14,17 +18,22 @@ struct ExerciseDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Exercise Image/Icon
-                ZStack {
-                    Circle()
-                        .fill(Color.blue.opacity(0.1))
-                        .frame(width: 120, height: 120)
+                // Exercise Visual - GIF or Icon
+                if let gifURLString = gifURL, let url = URL(string: gifURLString) {
+                    ExerciseGifView(url: url, exerciseName: exercise.name, imageName: exercise.imageName)
+                        .padding(.top)
+                } else {
+                    ZStack {
+                        Circle()
+                            .fill(exercise.isCardio ? Color.orange.opacity(0.1) : Color.blue.opacity(0.1))
+                            .frame(width: 120, height: 120)
 
-                    Image(systemName: exercise.imageName)
-                        .font(.system(size: 50))
-                        .foregroundStyle(.blue)
+                        Image(systemName: exercise.imageName)
+                            .font(.system(size: 50))
+                            .foregroundStyle(exercise.isCardio ? .orange : .blue)
+                    }
+                    .padding(.top)
                 }
-                .padding(.top)
 
                 // Exercise Name and Muscles
                 VStack(spacing: 8) {
@@ -43,33 +52,62 @@ struct ExerciseDetailView: View {
                     VideoLinkSection(url: url)
                 }
 
-                // Recommended Sets/Reps
-                HStack(spacing: 40) {
-                    VStack(spacing: 4) {
-                        Text("\(exercise.defaultSets)")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundStyle(.blue)
-                        Text("Sets")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                // Recommended Sets/Reps or Duration for Cardio
+                if exercise.isCardio {
+                    HStack(spacing: 40) {
+                        VStack(spacing: 4) {
+                            Text("\(exercise.defaultReps)")
+                                .font(.system(size: 36, weight: .bold))
+                                .foregroundStyle(.orange)
+                            Text("Minutes")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
 
-                    Rectangle()
-                        .fill(Color.secondary.opacity(0.3))
-                        .frame(width: 1, height: 50)
+                        Rectangle()
+                            .fill(Color.secondary.opacity(0.3))
+                            .frame(width: 1, height: 50)
 
-                    VStack(spacing: 4) {
-                        Text("\(exercise.defaultReps)")
-                            .font(.system(size: 36, weight: .bold))
-                            .foregroundStyle(.blue)
-                        Text("Reps")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        VStack(spacing: 4) {
+                            Text("~\(exercise.caloriesPerMinute * exercise.defaultReps)")
+                                .font(.system(size: 36, weight: .bold))
+                                .foregroundStyle(.orange)
+                            Text("Calories")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
                     }
+                    .padding()
+                    .background(Color.orange.opacity(0.1))
+                    .cornerRadius(16)
+                } else {
+                    HStack(spacing: 40) {
+                        VStack(spacing: 4) {
+                            Text("\(exercise.defaultSets)")
+                                .font(.system(size: 36, weight: .bold))
+                                .foregroundStyle(.blue)
+                            Text("Sets")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Rectangle()
+                            .fill(Color.secondary.opacity(0.3))
+                            .frame(width: 1, height: 50)
+
+                        VStack(spacing: 4) {
+                            Text("\(exercise.defaultReps)")
+                                .font(.system(size: 36, weight: .bold))
+                                .foregroundStyle(.blue)
+                            Text("Reps")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(16)
                 }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(16)
 
                 // Instructions
                 VStack(alignment: .leading, spacing: 12) {
@@ -266,6 +304,94 @@ struct FlowLayout: Layout {
 
             self.size = CGSize(width: maxWidth, height: y + rowHeight)
         }
+    }
+}
+
+// MARK: - Exercise GIF View
+struct ExerciseGifView: View {
+    let url: URL
+    let exerciseName: String
+    let imageName: String
+
+    @State private var imageLoadingState: ImageLoadingState = .loading
+
+    enum ImageLoadingState {
+        case loading
+        case loaded
+        case failed
+    }
+
+    var body: some View {
+        VStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.systemGray6))
+                    .frame(height: 200)
+
+                switch imageLoadingState {
+                case .loading:
+                    VStack(spacing: 12) {
+                        ProgressView()
+                        Text("Loading demonstration...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                case .loaded:
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .empty:
+                            ProgressView()
+                        case .success(let image):
+                            image
+                                .resizable()
+                                .aspectRatio(contentMode: .fit)
+                                .frame(height: 200)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                        case .failure:
+                            fallbackView
+                        @unknown default:
+                            fallbackView
+                        }
+                    }
+
+                case .failed:
+                    fallbackView
+                }
+            }
+
+            Text("Visual Demonstration")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .onAppear {
+            // Attempt to load the image
+            Task {
+                do {
+                    let (_, response) = try await URLSession.shared.data(from: url)
+                    if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                        imageLoadingState = .loaded
+                    } else {
+                        imageLoadingState = .failed
+                    }
+                } catch {
+                    imageLoadingState = .failed
+                }
+            }
+        }
+    }
+
+    private var fallbackView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: imageName)
+                .font(.system(size: 50))
+                .foregroundStyle(.blue)
+
+            Text("Demonstration unavailable")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .frame(height: 200)
     }
 }
 

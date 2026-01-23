@@ -7,7 +7,8 @@ struct PersonalTrainerApp: App {
         let schema = Schema([
             WorkoutSession.self,
             ExerciseSet.self,
-            CustomWorkoutPlan.self
+            CustomWorkoutPlan.self,
+            UserProfile.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

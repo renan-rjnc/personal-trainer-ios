@@ -1,5 +1,13 @@
 import Foundation
 
+// MARK: - Exercise Type
+enum ExerciseType: String, Codable {
+    case strength = "Strength"
+    case cardio = "Cardio"
+    case flexibility = "Flexibility"
+    case compound = "Compound"
+}
+
 struct Exercise: Identifiable, Hashable {
     let id: UUID
     let name: String
@@ -7,9 +15,12 @@ struct Exercise: Identifiable, Hashable {
     let instructions: String
     let imageName: String
     let videoURL: String?
+    let gifURL: String?  // Animated GIF for visual demonstration
     let defaultSets: Int
     let defaultReps: Int
     let formTips: [String]
+    let exerciseType: ExerciseType
+    let caloriesPerMinute: Int  // Estimated calories burned per minute
 
     init(
         id: UUID = UUID(),
@@ -18,9 +29,12 @@ struct Exercise: Identifiable, Hashable {
         instructions: String,
         imageName: String = "figure.strengthtraining.traditional",
         videoURL: String? = nil,
+        gifURL: String? = nil,
         defaultSets: Int = 3,
         defaultReps: Int = 10,
-        formTips: [String] = []
+        formTips: [String] = [],
+        exerciseType: ExerciseType = .strength,
+        caloriesPerMinute: Int = 5
     ) {
         self.id = id
         self.name = name
@@ -28,9 +42,16 @@ struct Exercise: Identifiable, Hashable {
         self.instructions = instructions
         self.imageName = imageName
         self.videoURL = videoURL
+        self.gifURL = gifURL
         self.defaultSets = defaultSets
         self.defaultReps = defaultReps
         self.formTips = formTips
+        self.exerciseType = exerciseType
+        self.caloriesPerMinute = caloriesPerMinute
+    }
+
+    var isCardio: Bool {
+        exerciseType == .cardio
     }
 }
 
@@ -211,11 +232,112 @@ struct ExerciseVideoLibrary {
         ]
     ]
 
+    // Cardio exercise videos
+    static let cardioVideos: [String: String] = [
+        "Treadmill Running": "https://www.youtube.com/watch?v=8iPEnn-ltC8",
+        "Stationary Bike": "https://www.youtube.com/watch?v=nhLQryJpWf8",
+        "Rowing Machine": "https://www.youtube.com/watch?v=H0r2tXrJzqc",
+        "Jumping Jacks": "https://www.youtube.com/watch?v=c4DAnQ6DtF8",
+        "Burpees": "https://www.youtube.com/watch?v=TU8QYVW0gDU",
+        "Mountain Climbers": "https://www.youtube.com/watch?v=nmwgirgXLYM",
+        "High Knees": "https://www.youtube.com/watch?v=D0jBMqvtRdI",
+        "Box Jumps": "https://www.youtube.com/watch?v=52r_Ul5k03g",
+        "Jump Rope": "https://www.youtube.com/watch?v=u3zgHI8QnqE",
+        "Battle Ropes": "https://www.youtube.com/watch?v=a3lCPJwVzLM",
+        "Stair Climber": "https://www.youtube.com/watch?v=jsvOPssDVbA",
+        "Elliptical": "https://www.youtube.com/watch?v=NRv7RK1vhjg",
+        "Kettlebell Swings": "https://www.youtube.com/watch?v=YSxHifyI6s8",
+        "Sprint Intervals": "https://www.youtube.com/watch?v=yNgUwCjrsb4"
+    ]
+
+    // GIF URLs for animated exercise demonstrations (using Tenor/GIPHY style URLs)
+    static let gifURLs: [String: String] = [
+        // Chest
+        "Bench Press": "https://media.giphy.com/media/7YCC7SFeGLfOYUKmkk/giphy.gif",
+        "Push-Ups": "https://media.giphy.com/media/Kajz5FMHMxKzC7ZHLL/giphy.gif",
+        "Incline Dumbbell Press": "https://media.giphy.com/media/3ohzAqBhmBWGLT6LDy/giphy.gif",
+
+        // Back
+        "Deadlift": "https://media.giphy.com/media/1qfKN8Dt0CRdCRxz9q/giphy.gif",
+        "Pull-Ups": "https://media.giphy.com/media/ua7vVw9awZKWwLSYpW/giphy.gif",
+        "Barbell Rows": "https://media.giphy.com/media/3oz8xM1ZynfjRcRoY8/giphy.gif",
+
+        // Shoulders
+        "Overhead Press": "https://media.giphy.com/media/xTiTnvtv1hNp9tIpTW/giphy.gif",
+        "Lateral Raises": "https://media.giphy.com/media/l0IylOPCNkiqOgMyA/giphy.gif",
+
+        // Arms
+        "Bicep Curls": "https://media.giphy.com/media/7YCC7SFeGLfOYUKmkk/giphy.gif",
+        "Tricep Pushdown": "https://media.giphy.com/media/3ohzdMk3uz9WSpdTvW/giphy.gif",
+
+        // Legs
+        "Barbell Squats": "https://media.giphy.com/media/1qfKN8Dt0CRdCRxz9q/giphy.gif",
+        "Leg Press": "https://media.giphy.com/media/xT0xem7ZlZ2DOYqpG0/giphy.gif",
+        "Walking Lunges": "https://media.giphy.com/media/3ohs4rclkSSrNGSlFK/giphy.gif",
+
+        // Cardio
+        "Burpees": "https://media.giphy.com/media/23hPPMRgPxbNBlPQe3/giphy.gif",
+        "Jumping Jacks": "https://media.giphy.com/media/l0HlNQ03J5JxX6lva/giphy.gif",
+        "Mountain Climbers": "https://media.giphy.com/media/xTiTnvtv1hNp9tIpTW/giphy.gif",
+        "High Knees": "https://media.giphy.com/media/l0HlKfxwsROuoJu5W/giphy.gif",
+        "Jump Rope": "https://media.giphy.com/media/3o7btUg31OCi0NXdkY/giphy.gif"
+    ]
+
+    // Cardio form tips
+    static let cardioFormTips: [String: [String]] = [
+        "Treadmill Running": [
+            "Maintain upright posture, don't lean forward",
+            "Land on midfoot, not heels",
+            "Keep arms at 90 degrees, swing naturally",
+            "Start with a warm-up walk",
+            "Don't hold onto the handrails"
+        ],
+        "Burpees": [
+            "Start standing, then squat down with hands on floor",
+            "Jump feet back into plank position",
+            "Perform a push-up (optional)",
+            "Jump feet back to hands",
+            "Explode up with arms overhead"
+        ],
+        "Mountain Climbers": [
+            "Start in high plank position",
+            "Keep core tight and back flat",
+            "Drive knees toward chest alternately",
+            "Keep hips level, don't bounce",
+            "Maintain steady breathing"
+        ],
+        "Jump Rope": [
+            "Keep elbows close to body",
+            "Use wrists to turn the rope, not arms",
+            "Jump only 1-2 inches off ground",
+            "Land softly on balls of feet",
+            "Keep core engaged throughout"
+        ],
+        "Rowing Machine": [
+            "Push with legs first, then pull with arms",
+            "Keep back straight, don't round",
+            "Drive through heels on the push",
+            "Pull handle to lower chest",
+            "Return arms first, then bend knees"
+        ],
+        "Kettlebell Swings": [
+            "Hinge at hips, not squat",
+            "Keep arms relaxed, power comes from hips",
+            "Squeeze glutes at the top",
+            "Let the kettlebell swing naturally",
+            "Keep core braced throughout"
+        ]
+    ]
+
     static func getVideoURL(for exerciseName: String) -> String? {
-        return videos[exerciseName]
+        return videos[exerciseName] ?? cardioVideos[exerciseName]
     }
 
     static func getFormTips(for exerciseName: String) -> [String] {
-        return formTips[exerciseName] ?? []
+        return formTips[exerciseName] ?? cardioFormTips[exerciseName] ?? []
+    }
+
+    static func getGifURL(for exerciseName: String) -> String? {
+        return gifURLs[exerciseName]
     }
 }
