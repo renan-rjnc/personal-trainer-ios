@@ -17,6 +17,11 @@ struct ActiveWorkoutView: View {
     @State private var exerciseStatuses: [UUID: ExerciseStatus] = [:]
     @State private var selectedExerciseIndex: Int = 0
 
+    // Use the workout from viewModel if available (for replacements), otherwise use original
+    private var currentExercises: [Exercise] {
+        workoutViewModel.currentWorkout?.exercises ?? workout.exercises
+    }
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -33,11 +38,11 @@ struct ActiveWorkoutView: View {
 
                 // Swipeable Exercise Pages
                 TabView(selection: $selectedExerciseIndex) {
-                    ForEach(Array(workout.exercises.enumerated()), id: \.element.id) { index, exercise in
+                    ForEach(Array(currentExercises.enumerated()), id: \.element.id) { index, exercise in
                         ExercisePageView(
                             exercise: exercise,
                             exerciseNumber: index + 1,
-                            totalExercises: workout.exercises.count,
+                            totalExercises: currentExercises.count,
                             status: exerciseStatuses[exercise.id] ?? .pending,
                             workoutViewModel: workoutViewModel,
                             timerViewModel: timerViewModel,
@@ -46,6 +51,9 @@ struct ActiveWorkoutView: View {
                             },
                             onSkip: {
                                 skipExercise(exercise)
+                            },
+                            onReplaceExercise: { newExercise in
+                                replaceExercise(at: index, with: newExercise)
                             }
                         )
                         .tag(index)
@@ -54,6 +62,7 @@ struct ActiveWorkoutView: View {
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 .onChange(of: selectedExerciseIndex) { _, newIndex in
                     workoutViewModel.currentExerciseIndex = newIndex
+                    workoutViewModel.resetCurrentSetForExercise()
                 }
             }
             .navigationTitle(workout.name)
@@ -201,11 +210,23 @@ struct ActiveWorkoutView: View {
     }
 
     private func moveToNextExercise() {
-        if selectedExerciseIndex < workout.exercises.count - 1 {
+        if selectedExerciseIndex < currentExercises.count - 1 {
             withAnimation {
                 selectedExerciseIndex += 1
             }
         }
+    }
+
+    private func replaceExercise(at index: Int, with newExercise: Exercise) {
+        // Update statuses for the new exercise
+        let oldExercise = currentExercises[index]
+        if let oldStatus = exerciseStatuses[oldExercise.id] {
+            exerciseStatuses[newExercise.id] = oldStatus
+        }
+        exerciseStatuses[oldExercise.id] = nil
+
+        // Replace in the view model
+        workoutViewModel.replaceExercise(at: index, with: newExercise)
     }
 }
 
@@ -219,8 +240,10 @@ struct ExercisePageView: View {
     @Bindable var timerViewModel: TimerViewModel
     let onMarkDone: () -> Void
     let onSkip: () -> Void
+    var onReplaceExercise: ((Exercise) -> Void)?
 
     @State private var showingFormGuide = false
+    @State private var showingReplaceSheet = false
 
     private var videoURL: String? {
         exercise.videoURL ?? ExerciseVideoLibrary.getVideoURL(for: exercise.name)
@@ -255,6 +278,16 @@ struct ExercisePageView: View {
         }
         .sheet(isPresented: $showingFormGuide) {
             FormGuideSheet(exercise: exercise, videoURL: videoURL, formTips: formTips)
+        }
+        .sheet(isPresented: $showingReplaceSheet) {
+            ReplaceExerciseSheet(
+                currentExercise: exercise,
+                alternatives: workoutViewModel.getAlternativeExercises(for: exercise),
+                onSelect: { newExercise in
+                    onReplaceExercise?(newExercise)
+                    showingReplaceSheet = false
+                }
+            )
         }
     }
 
@@ -311,6 +344,17 @@ struct ExercisePageView: View {
                     .background(status == .done ? Color.green.opacity(0.1) : Color.orange.opacity(0.1))
                     .cornerRadius(8)
                 }
+
+                // Replace button
+                Button(action: {
+                    showingReplaceSheet = true
+                }) {
+                    Label("Replace", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
             }
 
             HStack {
@@ -678,6 +722,136 @@ struct FormGuideSheet: View {
             Image(systemName: exercise.imageName)
                 .font(.system(size: 50))
                 .foregroundStyle(exercise.isCardio ? .orange : .blue)
+        }
+    }
+}
+
+// MARK: - Replace Exercise Sheet
+struct ReplaceExerciseSheet: View {
+    let currentExercise: Exercise
+    let alternatives: [Exercise]
+    let onSelect: (Exercise) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchText = ""
+
+    private var filteredAlternatives: [Exercise] {
+        if searchText.isEmpty {
+            return alternatives
+        }
+        return alternatives.filter { exercise in
+            exercise.name.localizedCaseInsensitiveContains(searchText) ||
+            exercise.muscleGroups.contains { $0.localizedCaseInsensitiveContains(searchText) }
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Current exercise info
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Replacing:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    HStack {
+                        Image(systemName: currentExercise.imageName)
+                            .font(.title2)
+                            .foregroundStyle(.blue)
+                            .frame(width: 40, height: 40)
+                            .background(Color.blue.opacity(0.1))
+                            .cornerRadius(8)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(currentExercise.name)
+                                .font(.headline)
+                            Text(currentExercise.muscleGroups.joined(separator: ", "))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+                    }
+                }
+                .padding()
+                .background(Color(.systemGray6))
+
+                // Search bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    TextField("Search exercises...", text: $searchText)
+                }
+                .padding(10)
+                .background(Color(.systemGray5))
+                .cornerRadius(10)
+                .padding()
+
+                // Alternatives list
+                if filteredAlternatives.isEmpty {
+                    ContentUnavailableView(
+                        "No Alternatives Found",
+                        systemImage: "figure.strengthtraining.traditional",
+                        description: Text("No matching exercises found for the selected muscle groups.")
+                    )
+                } else {
+                    List(filteredAlternatives) { exercise in
+                        Button(action: {
+                            onSelect(exercise)
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: exercise.imageName)
+                                    .font(.title3)
+                                    .foregroundStyle(exercise.isCardio ? .orange : .blue)
+                                    .frame(width: 36, height: 36)
+                                    .background((exercise.isCardio ? Color.orange : Color.blue).opacity(0.1))
+                                    .cornerRadius(8)
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(exercise.name)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.primary)
+
+                                    Text(exercise.muscleGroups.joined(separator: ", "))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+
+                                    // Show matching muscles
+                                    let matchingMuscles = Set(exercise.muscleGroups).intersection(Set(currentExercise.muscleGroups))
+                                    if !matchingMuscles.isEmpty {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "checkmark.circle.fill")
+                                                .font(.caption2)
+                                                .foregroundStyle(.green)
+                                            Text("Matches: \(matchingMuscles.joined(separator: ", "))")
+                                                .font(.caption2)
+                                                .foregroundStyle(.green)
+                                        }
+                                    }
+                                }
+
+                                Spacer()
+
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
+                    .listStyle(.plain)
+                }
+            }
+            .navigationTitle("Replace Exercise")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
         }
     }
 }

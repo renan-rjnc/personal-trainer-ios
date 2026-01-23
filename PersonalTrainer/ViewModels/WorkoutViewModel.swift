@@ -169,4 +169,61 @@ final class WorkoutViewModel {
             currentWeight = exerciseWeightHistory[exercise.name] ?? 0
         }
     }
+
+    // Public method for resetting when swiping between exercises
+    func resetCurrentSetForExercise() {
+        resetCurrentSet()
+    }
+
+    // MARK: - Exercise Replacement
+
+    /// Get alternative exercises that share at least one muscle group with the given exercise
+    func getAlternativeExercises(for exercise: Exercise) -> [Exercise] {
+        let allExercises = WorkoutPlanGenerator.allExercises
+        let currentExerciseNames = Set(currentWorkout?.exercises.map { $0.name } ?? [])
+
+        // Find exercises that share at least one muscle group
+        let alternatives = allExercises.filter { candidate in
+            // Don't include the current exercise or exercises already in the workout
+            guard candidate.name != exercise.name,
+                  !currentExerciseNames.contains(candidate.name) else {
+                return false
+            }
+
+            // Check if they share any muscle groups
+            let sharedMuscles = Set(candidate.muscleGroups).intersection(Set(exercise.muscleGroups))
+            return !sharedMuscles.isEmpty
+        }
+
+        // Sort by number of matching muscle groups (most similar first)
+        return alternatives.sorted { a, b in
+            let aMatches = Set(a.muscleGroups).intersection(Set(exercise.muscleGroups)).count
+            let bMatches = Set(b.muscleGroups).intersection(Set(exercise.muscleGroups)).count
+            return aMatches > bMatches
+        }
+    }
+
+    /// Replace an exercise in the current workout
+    func replaceExercise(at index: Int, with newExercise: Exercise) {
+        guard var workout = currentWorkout,
+              index >= 0 && index < workout.exercises.count else {
+            return
+        }
+
+        var exercises = workout.exercises
+        exercises[index] = newExercise
+
+        // Create updated workout plan
+        currentWorkout = WorkoutPlan(
+            id: workout.id,
+            name: workout.name,
+            description: workout.description,
+            exercises: exercises,
+            estimatedDuration: workout.estimatedDuration,
+            iconName: workout.iconName
+        )
+
+        // Reset current set for the new exercise
+        resetCurrentSet()
+    }
 }
