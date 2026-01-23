@@ -250,37 +250,99 @@ struct ExerciseVideoLibrary {
         "Sprint Intervals": "https://www.youtube.com/watch?v=yNgUwCjrsb4"
     ]
 
-    // GIF URLs for animated exercise demonstrations (using Tenor/GIPHY style URLs)
-    static let gifURLs: [String: String] = [
+    // ExerciseDB API configuration
+    static let exerciseDBApiKey = "502e7d43edmsh72f173a4bce6e19p1f7dcbjsnf0ec02518d1e"
+    static let exerciseDBHost = "exercisedb.p.rapidapi.com"
+
+    // ExerciseDB exercise IDs mapped to our exercise names
+    static let exerciseDBIds: [String: String] = [
         // Chest
-        "Bench Press": "https://media.giphy.com/media/7YCC7SFeGLfOYUKmkk/giphy.gif",
-        "Push-Ups": "https://media.giphy.com/media/Kajz5FMHMxKzC7ZHLL/giphy.gif",
-        "Incline Dumbbell Press": "https://media.giphy.com/media/3ohzAqBhmBWGLT6LDy/giphy.gif",
-
+        "Bench Press": "0025",
+        "Incline Barbell Press": "0047",
+        "Decline Bench Press": "0033",
+        "Dumbbell Bench Press": "0289",
+        "Incline Dumbbell Press": "1283",
+        "Dumbbell Flyes": "0308",
+        "Push-Ups": "0492",
+        "Machine Chest Press": "0576",
+        "Dumbbell Pullover": "0375",
         // Back
-        "Deadlift": "https://media.giphy.com/media/1qfKN8Dt0CRdCRxz9q/giphy.gif",
-        "Pull-Ups": "https://media.giphy.com/media/ua7vVw9awZKWwLSYpW/giphy.gif",
-        "Barbell Rows": "https://media.giphy.com/media/3oz8xM1ZynfjRcRoY8/giphy.gif",
-
+        "Deadlift": "0032",
+        "Pull-Ups": "0651",
+        "Barbell Rows": "0027",
+        "Pendlay Rows": "3017",
+        "T-Bar Row": "0606",
+        "Lat Pulldown": "2330",
+        "Seated Cable Row": "0861",
+        "Dumbbell Rows": "0293",
+        "Straight-Arm Pulldown": "0237",
+        "Inverted Rows": "0497",
+        "Dumbbell Shrugs": "0406",
         // Shoulders
-        "Overhead Press": "https://media.giphy.com/media/xTiTnvtv1hNp9tIpTW/giphy.gif",
-        "Lateral Raises": "https://media.giphy.com/media/l0IylOPCNkiqOgMyA/giphy.gif",
-
-        // Arms
-        "Bicep Curls": "https://media.giphy.com/media/7YCC7SFeGLfOYUKmkk/giphy.gif",
-        "Tricep Pushdown": "https://media.giphy.com/media/3ohzdMk3uz9WSpdTvW/giphy.gif",
-
+        "Seated Barbell Press": "0091",
+        "Overhead Press": "0091",
+        "Arnold Press": "0287",
+        "Lateral Raises": "0334",
+        "Front Raises": "0309",
+        "Reverse Flyes": "0383",
+        "Cable Lateral Raises": "0178",
+        "Upright Rows": "0119",
+        "Barbell Shrugs": "0095",
+        "Pike Push-Ups": "1296",
+        // Biceps
+        "Bicep Curls": "0294",
+        "Barbell Curls": "0031",
+        "EZ Bar Curls": "0447",
+        "Hammer Curls": "0312",
+        "Preacher Curls": "0372",
+        "Incline Dumbbell Curls": "0317",
+        "Concentration Curls": "0297",
+        "Cable Curls": "0868",
+        // Triceps
+        "Tricep Dips": "0019",
+        "Tricep Pushdown": "0199",
+        "Skull Crushers": "0060",
+        "Overhead Tricep Extension": "0362",
+        "Bench Dips": "0129",
+        "Tricep Kickbacks": "0333",
         // Legs
-        "Barbell Squats": "https://media.giphy.com/media/1qfKN8Dt0CRdCRxz9q/giphy.gif",
-        "Leg Press": "https://media.giphy.com/media/xT0xem7ZlZ2DOYqpG0/giphy.gif",
-        "Walking Lunges": "https://media.giphy.com/media/3ohs4rclkSSrNGSlFK/giphy.gif",
-
+        "Barbell Squats": "0043",
+        "Front Squats": "0042",
+        "Hack Squats": "0743",
+        "Leg Press": "0738",
+        "Goblet Squats": "1760",
+        "Walking Lunges": "0336",
+        "Bulgarian Split Squats": "0410",
+        "Leg Extensions": "0585",
+        "Dumbbell Step-Ups": "1684",
+        "Bodyweight Squats": "3167",
+        "Jump Squats": "0053",
+        "Romanian Deadlift": "0085",
+        "Dumbbell Romanian Deadlift": "1459",
+        "Leg Curls": "0586",
+        "Glute Bridges": "1409",
+        "Hip Thrusts": "1409",
+        "Calf Raises": "0417",
+        "Seated Calf Raises": "0594",
+        // Core
+        "Planks": "0464",
+        "Side Planks": "0664",
+        "Cable Crunches": "0175",
+        "Hanging Leg Raises": "0472",
+        "Hanging Knee Raises": "0010",
+        "Russian Twists": "0845",
+        "Bicycle Crunches": "0003",
+        "Crunches": "0175",
+        "Leg Raises": "0012",
+        "Dead Bug": "0276",
+        "Ab Wheel Rollouts": "0857",
         // Cardio
-        "Burpees": "https://media.giphy.com/media/23hPPMRgPxbNBlPQe3/giphy.gif",
-        "Jumping Jacks": "https://media.giphy.com/media/l0HlNQ03J5JxX6lva/giphy.gif",
-        "Mountain Climbers": "https://media.giphy.com/media/xTiTnvtv1hNp9tIpTW/giphy.gif",
-        "High Knees": "https://media.giphy.com/media/l0HlKfxwsROuoJu5W/giphy.gif",
-        "Jump Rope": "https://media.giphy.com/media/3o7btUg31OCi0NXdkY/giphy.gif"
+        "Burpees": "0501",
+        "Mountain Climbers": "0630",
+        "High Knees": "3636",
+        "Jump Rope": "2612",
+        "Kettlebell Swings": "0549",
+        "Box Jumps": "1374"
     ]
 
     // Cardio form tips
@@ -338,6 +400,10 @@ struct ExerciseVideoLibrary {
     }
 
     static func getGifURL(for exerciseName: String) -> String? {
-        return gifURLs[exerciseName]
+        guard let exerciseId = exerciseDBIds[exerciseName] else {
+            return nil
+        }
+        // Build ExerciseDB API URL for GIF (180p resolution for free tier)
+        return "https://\(exerciseDBHost)/image?exerciseId=\(exerciseId)&resolution=180&rapidapi-key=\(exerciseDBApiKey)"
     }
 }
