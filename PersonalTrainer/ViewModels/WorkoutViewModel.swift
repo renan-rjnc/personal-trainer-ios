@@ -205,7 +205,7 @@ final class WorkoutViewModel {
 
     /// Replace an exercise in the current workout
     func replaceExercise(at index: Int, with newExercise: Exercise) {
-        guard var workout = currentWorkout,
+        guard let workout = currentWorkout,
               index >= 0 && index < workout.exercises.count else {
             return
         }
